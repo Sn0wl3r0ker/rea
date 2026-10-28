@@ -115,8 +115,12 @@ it("keeps main pushes proposal-only and gates merged-release automation", async 
   expect(controller?.env?.GH_TOKEN).toBe(
     "${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}",
   );
+  expect(controller?.env?.ALLOW_MISSING_RELEASE_BOUNDARY).toBe(
+    "${{ github.repository_owner != 'morluto' }}",
+  );
   expect(controller?.run).toContain("--target-branch main");
   expect(controller?.run).toContain('--source-sha "$SOURCE_SHA"');
+  expect(controller?.run).toContain("Missing expected release for path");
   expect(controller?.env?.SOURCE_SHA).toBe("${{ github.sha }}");
   expect(controller?.if).toBe("steps.editorial.outputs.frozen != 'true'");
   expect(
