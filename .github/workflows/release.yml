@@ -102,8 +102,24 @@ jobs:
         if: steps.editorial.outputs.frozen != 'true'
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          ALLOW_MISSING_RELEASE_BOUNDARY: ${{ github.repository_owner != 'morluto' }}
           SOURCE_SHA: ${{ github.sha }}
-        run: node scripts/release-proposal.mjs --target-branch main --source-sha "$SOURCE_SHA"
+        run: |
+          set +e
+          output="$(node scripts/release-proposal.mjs --target-branch main --source-sha "$SOURCE_SHA" 2>&1)"
+          status=$?
+          set -e
+          if [[ ${status} -eq 0 ]]; then
+            printf '%s\n' "${output}"
+            exit 0
+          fi
+          printf '%s\n' "${output}" >&2
+          if [[ "${ALLOW_MISSING_RELEASE_BOUNDARY}" == "true" ]] &&
+            grep -Fq "Missing expected release for path" <<< "${output}"; then
+            echo "Skipping automatic release proposal refresh: no matching release boundary exists for this repository's manifest version." >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+          exit "${status}"
 
   merged-release:
     name: Release reviewed main merge
